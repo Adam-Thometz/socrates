@@ -41,6 +41,5 @@ After starting the server, you can access the interactive API documentation at:
 
 - `POST /debate/start` - Start a new philosophical debate
 - `GET /debate/{debate_id}` - Get a debate by ID
-- `GET /debate/{debate_id}/messages` - Get all messages for a debate
 - `GET /quiz/generate/{debate_id}` - Generate a quiz for a completed debate
 - `POST /quiz/submit` - Submit quiz answers and get results 

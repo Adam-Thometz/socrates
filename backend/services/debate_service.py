@@ -7,14 +7,11 @@ from app.models.debate import Debate, Message
 from app.schemas.schemas import DebateCreate
 import asyncio
 
-# Load environment variables
 load_dotenv()
 
-# Configure Anthropic client
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-# Define thinkers for each position
 DUALIST_THINKERS = [
     {
         "name": "René Descartes",
@@ -94,12 +91,14 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
         
         Write a response that:
         1. Is faithful to {current_thinker['name']}'s philosophical position
-        2. Uses terminology and arguments that this philosopher would use
+        2. Uses terminology and arguments that this philosopher would use but is not too technical
         3. Directly addresses the question and previous points in the debate
         4. Is about 3-5 sentences long
         5. Is written in the style of the philosopher
 
-        Pretend you are each thinker in the debate. This means you won't introduce your response or introduce yourself as an AI. You are legitimately the philosopher responding to the question.
+        Restrictions:
+        - Do NOT use any emotes like *speaks in a measured, philosophical tone* or anything like that.
+        - Do NOT introduce your response or introduce yourself as an AI. You are legitimately the philosopher responding to the question.
 
         Previous exchanges:
         {chr(10).join(previous_messages)}
