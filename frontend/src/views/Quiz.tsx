@@ -13,6 +13,10 @@ export const Quiz: React.FC = () => {
     isLoading,
     error
   } = useStore();
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     if (!currentQuiz) {
