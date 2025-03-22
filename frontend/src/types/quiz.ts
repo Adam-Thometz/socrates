@@ -4,7 +4,7 @@ export interface QuizOption {
   is_correct: boolean;
 }
 
-export interface QuizQuestion {
+export interface Question {
   id: number;
   question_text: string;
   correct_answer: string;
@@ -14,7 +14,7 @@ export interface QuizQuestion {
 export interface Quiz {
   id: number;
   debate_id: number;
-  questions: QuizQuestion[];
+  questions: Question[];
 }
 
 export interface QuizResult {
