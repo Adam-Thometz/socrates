@@ -3,8 +3,8 @@ import os
 import anthropic
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from app.models.debate import Debate, Message
-from app.schemas.schemas import DebateCreate
+from models.debate import Debate, Message
+from schemas.schemas import DebateCreate
 import asyncio
 
 load_dotenv()
@@ -38,6 +38,13 @@ MONIST_THINKERS = [
     }
 ]
 
+HISTORICAL_CONTEXT = {
+    "René Descartes": "17th century philosopher writing during the Scientific Revolution, developing his ideas in response to skepticism and mechanistic worldviews of his time.",
+    "Nicholas Malebranche": "17th century French priest and rationalist philosopher, heavily influenced by Descartes but developed occasionalism in response to mind-body interaction problems.",
+    "George Berkeley": "18th century Irish philosopher responding to Locke and Newton, developing immaterialism partly as a response to skepticism and atheism.",
+    "Baruch Spinoza": "17th century Dutch philosopher of Portuguese-Jewish origin, excommunicated for his radical views, developing a unique monist metaphysics partly influenced by Descartes."
+}
+
 async def create_debate(db: Session, debate_create: DebateCreate):
     """Create a new debate and start generating responses asynchronously."""
     # Create new debate in the database
@@ -62,12 +69,18 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
     """Generate debate messages using Anthropic API and save to database."""
     thinkers = [dualist, monist]
     
-    # Define the number of exchanges (4 from each thinker)
     total_messages = 8
+
+    key_points = []
     
     for sequence in range(total_messages):
-        # Alternate between thinkers
-        current_thinker = thinkers[sequence % 2]
+        # Logic to sometimes have a philosopher respond to a critical point rather than strictly alternating
+        if sequence > 2 and key_points and random.random() < 0.3:
+            # Allow occasional follow-up on important points
+            current_thinker = thinkers[0] if key_points[-1]["thinker"] == thinkers[1]["name"] else thinkers[1]
+        else:
+            # Normal alternating pattern
+            current_thinker = thinkers[sequence % 2]
         
         # Get previous messages for context
         previous_messages = []
@@ -88,17 +101,22 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
         
         You are responding as {current_thinker['name']}, who is a {current_thinker['position']}.
         {current_thinker['name']} {current_thinker['description']}
+
+        Historical context: {HISTORICAL_CONTEXT[current_thinker['name']]}
         
         Write a response that:
         1. Is faithful to {current_thinker['name']}'s philosophical position
         2. Uses terminology and arguments that this philosopher would use but is not too technical
         3. Directly addresses the question and previous points in the debate
-        4. Is about 3-5 sentences long
-        5. Is written in the style of the philosopher
+        4. Is about 3-5 sentences long,
+        5. Is written in the style of the philosopher, including their characteristic rhetorical approaches
+        6. References specific works or arguments from their actual philosophical corpus when relevant
 
         Restrictions:
         - Do NOT use any emotes like *speaks in a measured, philosophical tone* or anything like that.
         - Do NOT introduce your response or introduce yourself as an AI. You are legitimately the philosopher responding to the question.
+        - Avoid anachronistic references to concepts or terminology that wouldn't have been available to the philosopher.
+        - Do NOT go over the sentence limit. The responses should be digestable to beginners.
 
         Previous exchanges:
         {chr(10).join(previous_messages)}
@@ -107,7 +125,7 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
         # Generate response with Anthropic
         response = client.messages.create(
             model="claude-3-haiku-20240307",
-            max_tokens=300,
+            max_tokens=500,
             temperature=0.7,
             system=context,
             messages=[
@@ -117,6 +135,12 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
         
         # Extract the content
         message_content = response.content[0].text
+
+        # Analyze response for key points that might deserve follow-up
+        if sequence > 0:
+            # Simple logic to identify potentially important claims
+            if "essence" in message_content or "substance" in message_content or "fundamental" in message_content:
+                key_points.append({"sequence": sequence, "thinker": current_thinker['name'], "point": message_content[:100]})
         
         # Create message in database
         db_message = Message(
@@ -134,7 +158,7 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
         db_session.close()
         
         # Pause between generating messages to simulate real-time debate
-        await asyncio.sleep(5)
+        await asyncio.sleep(random.uniform(4, 8))
     
     # Mark debate as completed
     db_session = Session(bind=db.get_bind())
