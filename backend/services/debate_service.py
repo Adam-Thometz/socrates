@@ -47,7 +47,6 @@ HISTORICAL_CONTEXT = {
 
 async def create_debate(db: Session, debate_create: DebateCreate):
     """Create a new debate and start generating responses asynchronously."""
-    # Create new debate in the database
     db_debate = Debate(
         topic=debate_create.topic,
         question=debate_create.question
@@ -56,31 +55,31 @@ async def create_debate(db: Session, debate_create: DebateCreate):
     db.commit()
     db.refresh(db_debate)
     
-    # Select two thinkers (one from each position)
     dualist = random.choice(DUALIST_THINKERS)
     monist = random.choice(MONIST_THINKERS)
     
-    # Start generating debate asynchronously
     asyncio.create_task(generate_debate_messages(db, db_debate.id, dualist, monist, debate_create.question))
     
     return db_debate
 
+def determine_next_thinker(thinkers: list, key_points: list, sequence: int):
+    """Determine which thinker should respond next based on the sequence number and key points."""
+    if sequence > 2 and key_points and random.random() < 0.3:
+        return thinkers[0] if key_points[-1]["thinker"] == thinkers[1]["name"] else thinkers[1]
+    else:
+        return thinkers[sequence % 2]
+
 async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, monist: dict, question: str):
     """Generate debate messages using Anthropic API and save to database."""
     thinkers = [dualist, monist]
+    random.shuffle(thinkers)
     
     total_messages = 8
 
     key_points = []
     
     for sequence in range(total_messages):
-        # Logic to sometimes have a philosopher respond to a critical point rather than strictly alternating
-        if sequence > 2 and key_points and random.random() < 0.3:
-            # Allow occasional follow-up on important points
-            current_thinker = thinkers[0] if key_points[-1]["thinker"] == thinkers[1]["name"] else thinkers[1]
-        else:
-            # Normal alternating pattern
-            current_thinker = thinkers[sequence % 2]
+        current_thinker = determine_next_thinker(thinkers, key_points, sequence)
         
         # Get previous messages for context
         previous_messages = []
@@ -93,7 +92,6 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
             for msg in db_messages:
                 previous_messages.append(f"{msg.thinker_name} ({msg.thinker_position}): {msg.content}")
         
-        # Construct the context for the AI
         context = f"""
         You are simulating a philosophical debate between two thinkers on the topic of Dualism vs. Monism.
         
@@ -113,7 +111,7 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
         6. References specific works or arguments from their actual philosophical corpus when relevant
 
         Restrictions:
-        - Do NOT use any emotes like *speaks in a measured, philosophical tone* or anything like that.
+        - Phrases that describe how the philosopher is speaking are not allowed. No *speaks in a measured, philosophical tone* or anything like that.
         - Do NOT introduce your response or introduce yourself as an AI. You are legitimately the philosopher responding to the question.
         - Avoid anachronistic references to concepts or terminology that wouldn't have been available to the philosopher.
         - Do NOT go over the sentence limit. The responses should be digestable to beginners.
@@ -122,7 +120,6 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
         {chr(10).join(previous_messages)}
         """
         
-        # Generate response with Anthropic
         response = client.messages.create(
             model="claude-3-haiku-20240307",
             max_tokens=500,
@@ -133,16 +130,18 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
             ]
         )
         
-        # Extract the content
         message_content = response.content[0].text
 
         # Analyze response for key points that might deserve follow-up
         if sequence > 0:
             # Simple logic to identify potentially important claims
             if "essence" in message_content or "substance" in message_content or "fundamental" in message_content:
-                key_points.append({"sequence": sequence, "thinker": current_thinker['name'], "point": message_content[:100]})
+                key_points.append({
+                    "sequence": sequence,
+                    "thinker": current_thinker['name'],
+                    "point": message_content[:100]
+                })
         
-        # Create message in database
         db_message = Message(
             debate_id=debate_id,
             thinker_name=current_thinker['name'],
@@ -151,7 +150,6 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
             sequence=sequence
         )
         
-        # Add to database and commit
         db_session = Session(bind=db.get_bind())
         db_session.add(db_message)
         db_session.commit()
@@ -160,7 +158,6 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
         # Pause between generating messages to simulate real-time debate
         await asyncio.sleep(random.uniform(4, 8))
     
-    # Mark debate as completed
     db_session = Session(bind=db.get_bind())
     db_debate = db_session.query(Debate).filter(Debate.id == debate_id).first()
     db_debate.completed = True

@@ -1,43 +1,59 @@
 import anthropic
 import os
+import json
+import re
 from sqlalchemy.orm import Session
 from models.debate import Debate
 from models.quiz import Quiz, QuizQuestion, QuizOption
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Configure Anthropic client
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
+def extract_json_from_response(response: str) -> dict:
+    """Extract JSON from the response."""
+    json_match = re.search(r'```json\n(.*?)\n```', response, re.DOTALL)
+    if json_match:
+        json_str = json_match.group(1)
+    else:
+        json_str = re.search(r'{.*}', response, re.DOTALL).group(0)
+    return json.loads(json_str)
+
+def grade_quiz(questions: list, answers: list) -> int:
+    """Grade a quiz based on the correct answers."""
+    correct_count = 0
+    total_questions = len(questions)
+    if total_questions == 0:
+        return 0
+    
+    for i, question in enumerate(questions):
+        if i < len(answers) and question.correct_answer == answers[i]:
+            correct_count += 1
+    
+    return (correct_count / total_questions) * 100
+
 def generate_quiz(db: Session, debate_id: int):
     """Generate a quiz based on a completed debate."""
-    # Check if debate exists and is completed
     debate = db.query(Debate).filter(Debate.id == debate_id).first()
     if not debate or not debate.completed:
         return None
     
-    # Check if quiz already exists
     existing_quiz = db.query(Quiz).filter(Quiz.debate_id == debate_id).first()
     if existing_quiz:
         return existing_quiz
     
-    # Create new quiz
     quiz = Quiz(debate_id=debate_id)
     db.add(quiz)
     db.commit()
     db.refresh(quiz)
     
-    # Get all debate messages
     messages = debate.messages
     
-    # Use Anthropic to generate questions
     message_texts = [f"{msg.thinker_name} ({msg.thinker_position}): {msg.content}" for msg in messages]
     debate_text = "\n".join(message_texts)
     
-    # Generate 5 quiz questions
     prompt = f"""
     I'm going to show you a philosophical debate between two thinkers on Dualism vs. Monism. 
     After reading the debate, please create 5 multiple-choice questions testing understanding of what each thinker believes.
@@ -78,23 +94,10 @@ def generate_quiz(db: Session, debate_id: int):
         ]
     )
     
-    # Extract and parse JSON response
-    import json
-    import re
-    
-    # Try to extract JSON from the response
     content = response.content[0].text
-    json_match = re.search(r'```json\n(.*?)\n```', content, re.DOTALL)
-    if json_match:
-        json_str = json_match.group(1)
-    else:
-        json_str = re.search(r'{.*}', content, re.DOTALL).group(0)
+    questions_data = extract_json_from_response(content)
     
-    questions_data = json.loads(json_str)
-    
-    # Add questions and options to database
     for q_data in questions_data["questions"]:
-        # Create question
         question = QuizQuestion(
             quiz_id=quiz.id,
             question_text=q_data["question"],
@@ -119,26 +122,13 @@ def generate_quiz(db: Session, debate_id: int):
 
 def submit_quiz(db: Session, quiz_id: int, answers: list):
     """Submit quiz answers and calculate score."""
-    # Get quiz and questions
     quiz = db.query(Quiz).filter(Quiz.id == quiz_id).first()
     if not quiz:
         return None
     
     questions = db.query(QuizQuestion).filter(QuizQuestion.quiz_id == quiz_id).all()
     
-    # Calculate score
-    correct_count = 0
-    total_questions = len(questions)
-    
-    for i, question in enumerate(questions):
-        if i < len(answers) and question.correct_answer == answers[i]:
-            correct_count += 1
-    
-    # Update quiz with score
-    if total_questions > 0:
-        quiz.score = (correct_count / total_questions) * 100
-    else:
-        quiz.score = 0
+    quiz.score = grade_quiz(questions, answers)
     
     quiz.completed = True
     db.commit()
