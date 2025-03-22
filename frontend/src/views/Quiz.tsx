@@ -13,7 +13,6 @@ export const Quiz: React.FC = () => {
     error
   } = useStore();
 
-  // Generate quiz if not already loaded
   useEffect(() => {
     if (!currentQuiz) {
       generateQuiz();
@@ -29,7 +28,6 @@ export const Quiz: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    // Check if all questions are answered
     const allAnswered = quizAnswers.every((answer: string) => answer !== '');
     
     if (!allAnswered) {
@@ -49,7 +47,7 @@ export const Quiz: React.FC = () => {
 
       <div className="quiz-questions">
         {currentQuiz.questions.map((question: QuizQuestion, qIndex: number) => (
-          <div key={qIndex} className="quiz-question">
+          <div key={`question-${qIndex + 1}`} className="quiz-question">
             <h3>Question {qIndex + 1}</h3>
             <p>{question.question_text}</p>
 

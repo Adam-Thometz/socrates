@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Message } from '../types';
 
@@ -15,7 +15,7 @@ export const Debate: React.FC = () => {
   }
   
   const { topic, question, messages } = currentDebate;
-  
+
   const groupedMessages: Message[][] = [];
   let currentGroup: Message[] = [];
   
