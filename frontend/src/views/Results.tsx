@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStore } from '../store/useStore';
-
+import { showQuizScore } from '../utils';
 export const Results: React.FC = () => {
   const { quizResult, reset } = useStore();
 
@@ -10,23 +10,7 @@ export const Results: React.FC = () => {
 
   const { score } = quizResult;
   
-  // Define feedback based on score
-  let feedback = '';
-  let feedbackClass = '';
-  
-  if (score >= 90) {
-    feedback = "Excellent! You have a deep understanding of these philosophical positions.";
-    feedbackClass = 'excellent';
-  } else if (score >= 70) {
-    feedback = "Good job! You grasp the main concepts well.";
-    feedbackClass = 'good';
-  } else if (score >= 50) {
-    feedback = "Not bad. You understand some key differences in these philosophical views.";
-    feedbackClass = 'average';
-  } else {
-    feedback = "Keep studying! These philosophical concepts can be challenging.";
-    feedbackClass = 'needs-work';
-  }
+  const { feedback, feedbackClass } = showQuizScore(score);
 
   const handlePlayAgain = () => {
     reset();
