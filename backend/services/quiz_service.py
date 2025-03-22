@@ -1,9 +1,8 @@
 import anthropic
 import os
-import random
 from sqlalchemy.orm import Session
-from app.models.debate import Debate
-from app.models.quiz import Quiz, QuizQuestion, QuizOption
+from models.debate import Debate
+from models.quiz import Quiz, QuizQuestion, QuizOption
 from dotenv import load_dotenv
 
 # Load environment variables

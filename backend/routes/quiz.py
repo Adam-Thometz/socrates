@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.database.database import get_db
-from app.schemas.schemas import QuizResponse, QuizResultResponse, QuizSubmit
-from app.services.quiz_service import generate_quiz, submit_quiz
-from app.models.quiz import Quiz, QuizQuestion
+from database.database import get_db
+from schemas.schemas import QuizResponse, QuizResultResponse, QuizSubmit
+from services.quiz_service import generate_quiz, submit_quiz
+from models.quiz import Quiz, QuizQuestion
 
 router = APIRouter()
 

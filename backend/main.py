@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import debate, quiz
-from app.database.database import engine, Base
+from routes import debate, quiz
+from database.database import engine, Base
 
 # Create the database tables
 Base.metadata.create_all(bind=engine)

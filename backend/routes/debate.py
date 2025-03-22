@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database.database import get_db
-from app.schemas.schemas import DebateCreate, DebateResponse, MessageResponse
-from app.services.debate_service import create_debate, get_debate
-from app.models.debate import Message
+from database.database import get_db
+from schemas.schemas import DebateCreate, DebateResponse
+from services.debate_service import create_debate, get_debate
 
 router = APIRouter()
 
