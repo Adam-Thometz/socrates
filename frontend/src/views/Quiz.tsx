@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Question } from '../types';
-import { QuizQuestion } from '../components/QuizQuestion';
+import { QuizQuestion } from '../components';
 
 export const Quiz: React.FC = () => {
   const { 
