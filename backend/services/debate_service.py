@@ -109,6 +109,7 @@ async def generate_debate_messages(db: Session, debate_id: int, dualist: dict, m
         4. Is about 3-5 sentences long,
         5. Is written in the style of the philosopher, including their characteristic rhetorical approaches
         6. References specific works or arguments from their actual philosophical corpus when relevant
+        7. Use the Socratic style of dialogue found in Plato's works.
 
         Restrictions:
         - Phrases that describe how the philosopher is speaking are not allowed. No *speaks in a measured, philosophical tone* or anything like that.
